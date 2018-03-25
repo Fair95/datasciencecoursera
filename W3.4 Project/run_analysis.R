@@ -30,7 +30,7 @@ names(dat) <- name_res
 names(dat)[67:68] <- c("activity","subjectID")
 
 ## Uses descriptive activity names to name the activities (task3)
-factor(dat$activity,labels=c("WALKING","WALKING_UPSTAIRS",
+dat$activity <- factor(dat$activity,labels=c("WALKING","WALKING_UPSTAIRS",
                              "WALKING_DOWNSTAIRS","SITTING",
                              "STANDING","LYING"))
 
