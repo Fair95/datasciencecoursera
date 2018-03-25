@@ -32,8 +32,8 @@ subjectID integer
   29  
   30  
 
-activity integer  
-  type: activity code  
+activity charactor  
+  type: activity description 
   1 WALKING  
   2 WALKING_UPSTAIRS  
   3 WALKING_DOWNSTAIRS  
