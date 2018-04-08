@@ -1,0 +1,114 @@
+---
+title: "Reproducible Research: Peer Assessment 1"
+output: 
+  html_document:
+    keep_md: true
+---
+
+
+## Loading and preprocessing the data  
+First we need to unzip and load the data using the code as following
+```{r load, echo = TRUE}
+unzip("activity.zip")
+dat <- read.csv("activity.csv")
+```
+  
+Now lets have a peer of what the data looks like
+```{r, echo = TRUE}
+str(dat)
+```
+
+
+
+## What is mean total number of steps taken per day?
+```{r, echo = TRUE}
+library(ggplot2)
+ts <- aggregate(steps~date, dat, sum, rm.na = TRUE)
+ggplot(data = ts, aes(x = date,y = steps) ) + geom_histogram(stat = "identity")
+```
+
+```{r ,echo = TRUE}
+library(xtable)
+tmean <- with(dat,tapply(steps,date,mean,rm.na = TRUE))
+tmedian <- with(dat,tapply(steps,date,median,rm.na = TRUE))
+xt1 <- xtable(as.data.frame(tmean))
+xt2 <- xtable(as.data.frame(tmedian))
+```
+Here is the table for mean values
+```{r, echo=TRUE}
+print(xt1)
+```
+Here is the table for median values
+```{r, echo = TRUE}
+print(xt2)
+```
+  
+## What is the average daily activity pattern?
+```{r, echo = TRUE}
+is <- aggregate(steps~interval, dat, mean, rm.na = TRUE)
+ggplot(data = is, aes(x = interval, y = steps)) + geom_line()
+```
+  
+The interval contains the maximum number of steps is [`r is$interval[which.max(is$step)]`, `r is$interval[which.max(is$step)]+5`]
+
+
+
+## Imputing missing values
+In the previous analysis, we exclude all the cases which contain missing values. However, The presence of missing days may introduce bias into some calculations or summaries of the data and we need to take the bais into consideration. First of all, we need to find how many missing cases are there in our study. this can be achieved using following R code:  
+```{r ,echo = TRUE}
+nmissing <- sum(!complete.cases(dat))
+```
+It appears that we have `r nmissing` missing values.  
+
+To address the effect of missing cases, we can replace all missing values with the mean of steps in that particular time interval.  
+```{r, echo = TRUE}
+replica <- merge(dat,is,by = "interval")
+dat2<- dat
+dat2$steps[!complete.cases(dat2)] <- replica$steps.y[!complete.cases(dat2)]
+```
+  
+Lets now draw a new histogram which all missing values are imputed.  
+```{r, echo = TRUE}
+ts2 <- aggregate(steps~date, dat2, sum, rm.na = TRUE)
+ggplot(data = ts2, aes(x = date,y = steps) ) + geom_histogram(stat = "identity")
+```
+  
+Now lets check the mean and median change  
+```{r, echo = TRUE}
+tmean2 <- with(dat2,tapply(steps,date,mean,rm.na = TRUE))
+tmedian2 <- with(dat2,tapply(steps,date,median,rm.na = TRUE))
+xt3 <- xtable(as.data.frame(tmean2))
+xt4 <- xtable(as.data.frame(tmedian2))
+```
+
+Here is the table for new mean values
+```{r, echo=TRUE}
+print(xt3)
+```
+Here is the table for new median values
+```{r, echo = TRUE}
+print(xt4)
+```
+  
+Here we can conclude that imputing the missing value in this way will sligtly increase the mean and median.  
+
+## Are there differences in activity patterns between weekdays and weekends?  
+Here we want to examine if the patterns differ between weekdays and weekend. Firstly we should label all observations to identify them as either "Weekday" or "Weekend".  
+```{r, echo = TRUE}
+abbre <- weekdays(as.Date(dat2$date))
+abbre[abbre %in% c("Saturday","Sunday") ] <- "Weekend"
+abbre[abbre %in% c("Monday","Tuesday","Wednesday","Thursday","Friday")] <- "Weekday"
+dat3 <- cbind(dat2,as.data.frame(abbre))
+```
+  
+Now we can drow the panel plot on both weekdays and weekend to see if there is a big difference  
+```{r, echo = TRUE}
+is3 <- aggregate(steps~abbre+interval, dat3, mean, rm.na = TRUE)
+ggplot(data = is3, aes(x = interval, y = steps)) + geom_line()+facet_grid(abbre~.)
+
+## Alternative method
+## ggplot(data = dat3, aes(x = interval, y = steps)) + stat_summary(fun.y = mean,geom = "line") + facet_grid(abbre~.)
+
+```
+
+
