@@ -1,0 +1,96 @@
+---
+title: "Exploration the effect of severe event on public health and economic damage"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+## Introduction
+This Project aims to explore which type of severe event can cause most fatalities, injuries, property damage or crop damge.  
+The raw dataset is obtained from [U.S. National Oceanic and Atmospheric Administration's (NOAA) storm database](https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2) which contains a series of events with recorded fatalies, injuries, property damages and so on from 1950 to November 2011.  
+
+In this particular project, we only forcus on fatalities, injuries, property damage and crop damage, which is the reason why we only select those columns from the dataset.  
+
+To find which types of events (as indicated in the 𝙴𝚅𝚃𝚈𝙿𝙴 variable) are most harmful with respect to population health, we have tried two different approaches:
+1. Rank the harmfulness primarily by "FATALITIES" then "INJURIES" due to the fact that fatalities is considered more servere.   
+2. Rank the harmfulness by the sum of "FATALITIES" and "INJURIES".  
+
+To find which types of events have the greatest economic consequences, we simply examin the total damage caused, which is evaluated by dollars.  
+
+The panel graphs are drawn to show the comparison with all R codes provided for the purpose of reproducibility.
+
+## Data Processing
+Firstly, we need to set up the enviroment correctly with the following code:  
+```{r setup}
+setwd("~/Desktop/Coursera Datascience")
+rm(list = ls())
+library(ggplot2)
+library(reshape2)
+library(gridExtra)
+if (!file.exists("./wk5_4")) {dir.create("./wk5_4")}
+
+```
+As mentioned, the raw data is downloaded from [U.S. National Oceanic and Atmospheric Administration's (NOAA) storm database](https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2).
+```{r readData, cache = TRUE}
+if (!file.exists("./wk5_4/data.bz2")){
+  fileurl <- "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2"
+  download.file(fileurl,destfile <- "./wk5_4/data.bz2",method = "curl",mode = "wb")
+}
+  raw_dat <- read.csv("./wk5_4/data.bz2") 
+```
+
+The preprocessing steps simply scale up the property damages and crop damages as indicated by the variable `PROPDMGEXP` and `CROPDMGEXP` where [Bb] represnets 10^9, [Mm] represnts 10^6, [Kk] represents 10^3 and [Hh] represnts 10^2 respectively. Other symbols such as "+", "-" are ignored as they have little effect on the actual value.
+```{r preprocessing}
+dat <- subset(raw_dat,select = c(EVTYPE,FATALITIES,INJURIES,PROPDMG,PROPDMGEXP,CROPDMG,CROPDMGEXP))
+kindexp <- dat$PROPDMGEXP == "K"
+bindexp <- dat$PROPDMGEXP == "B"
+hindexp <- dat$PROPDMGEXP == "h"| dat$PROPDMGEXP == "H"
+mindexp <- dat$PROPDMGEXP == "m"| dat$PROPDMGEXP == "M"
+bindexc <- dat$CROPDMGEXP == "B"
+kindexc <- dat$CROPDMGEXP == "k"| dat$CROPDMGEXP == "K"
+mindexc <- dat$CROPDMGEXP == "m"| dat$CROPDMGEXP == "M"
+dat$PROPDMG[kindexp] <- dat$PROPDMG[kindexp]*10^3
+dat$PROPDMG[bindexp] <- dat$PROPDMG[bindexp]*10^9
+dat$PROPDMG[hindexp] <- dat$PROPDMG[hindexp]*10^2
+dat$PROPDMG[mindexp] <- dat$PROPDMG[mindexp]*10^6
+dat$CROPDMG[bindexc] <- dat$CROPDMG[bindexc]*10^9
+dat$CROPDMG[kindexc] <- dat$CROPDMG[kindexc]*10^3
+dat$CROPDMG[mindexc] <- dat$CROPDMG[mindexc]*10^6
+tdat <- subset(dat,select = c(EVTYPE,FATALITIES,INJURIES,PROPDMG,CROPDMG))
+```
+
+Order the dataset based on what we are intested at.
+```{r order}
+bytype <- aggregate(cbind(FATALITIES,INJURIES,HARMFUL = FATALITIES + INJURIES,PROPDMG,CROPDMG,ECODMG = PROPDMG+CROPDMG)~EVTYPE,tdat,sum)
+RankFatality <- bytype[order(bytype$FATALITIES,decreasing = TRUE),]
+RankInjury <- bytype[order(bytype$INJURIES,decreasing = TRUE),]
+RankHarmful1 <- bytype[order(bytype$FATALITIES,bytype$INJURIES,decreasing = TRUE),]
+RankHarmful2 <- bytype[order(bytype$HARMFUL,decreasing = TRUE),]
+RankPropDmg <- bytype[order(bytype$PROPDMG,decreasing = TRUE),]
+RankCropDmg <- bytype[order(bytype$CROPDMG,decreasing = TRUE),]
+RankEcoDmg <- bytype[order(bytype$ECODMG,decreasing = TRUE),]
+```
+
+## Results
+Here is the results:
+```{r plotHarmful}
+p1 <- ggplot(data = RankFatality[1:5,], aes(x = reorder(EVTYPE,-FATALITIES), y = FATALITIES)) + geom_bar(stat = "identity") + xlab("Event Type") + ylab("# of Fatalities") + labs(title="Top 5 events causing most fatalities")
+p2 <- ggplot(data = RankInjury[1:5,], aes(x = reorder(EVTYPE,-INJURIES), y = INJURIES)) + geom_bar(stat = "identity") +xlab("Event Type") + ylab("# of Injuries")+labs(title="Top 5 events causing most injuries")
+TopHarmful1 <- melt(subset(RankHarmful1[1:5,],select=c(EVTYPE,FATALITIES,INJURIES)),value.name = c("value"),variable.name = "Type")
+p3 <- ggplot(data = TopHarmful1, aes(x = reorder(EVTYPE,-TopHarmful1$value), y = TopHarmful1$value,fill = TopHarmful1$Type)) + geom_bar(stat = "identity") +xlab("Event Type")+ ylab("# of Harmed")+labs(title="Top 5 events causing most public health issues")
+TopHarmful2 <- melt(subset(RankHarmful2[1:5,],select=c(EVTYPE,FATALITIES,INJURIES)),value.name = c("value"),variable.name = "Type")
+p4 <- ggplot(data = TopHarmful2, aes(x = reorder(EVTYPE,-TopHarmful2$value), y = TopHarmful2$value,fill = TopHarmful2$Type)) + geom_bar(stat = "identity") +xlab("Event Type")+ ylab("# of Harmed")+labs(title="Top 5 events causing most public health issues")
+grid.arrange(p1,p2,p3,p4, nrow = 4)
+```
+
+```{r plotEcoDmg}
+p5 <- ggplot(data = RankPropDmg[1:5,], aes(x = reorder(EVTYPE,-PROPDMG), y = PROPDMG)) + geom_bar(stat = "identity") + xlab("Event Type") + ylab("PropDmg ($)")+labs(title="Top 5 events causing most property damages")
+p6 <- ggplot(data = RankCropDmg[1:5,], aes(x = reorder(EVTYPE,-CROPDMG), y = CROPDMG)) + geom_bar(stat = "identity") + xlab("Event Type") + ylab("CropDmg ($)")+labs(title="Top 5 events causing most crop damages")
+TopEcoDmg <- melt(subset(RankEcoDmg[1:5,],select=c(EVTYPE,PROPDMG,CROPDMG)),value.name = c("value"),variable.name = "Type")
+p7 <- ggplot(data = TopEcoDmg, aes(x = reorder(EVTYPE,-TopEcoDmg$value), y = TopEcoDmg$value,fill = TopEcoDmg$Type)) + geom_bar(stat = "identity") + xlab("Event Type") + ylab("EcoDmg ($)")+labs(title="Top 5 events causing most economic damages")
+grid.arrange(p5,p6,p7, nrow = 3)
+```
+
+From the graphs above, we can see Tornado and excessive heat and lightning are the most harmful events to public health regardless of which approach we choose. If we prioritise the fatalities then flash flood and heat are considered as very harmful, otherwise, if we just consider the sum of fatalities and injuries, tstm wind and flood are recognised as very harmful instead.  
+
+With respect to economic damage caused, flood is the most server event followed by hurricane/typhoon, tornado, storm surge and hail.
