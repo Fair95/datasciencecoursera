@@ -1,0 +1,62 @@
+---
+title: "PartB"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+# Part II: Basic Inferential Data Analysis Instructions
+
+## Overview
+Firstly, we want to can load the dataset and get rid of all missing values as our preprocessing. Then we can have a look at the relationship between variables. As shown in the bar charts below, we can see the mean tooth growth is close for different supp, therefore, we can conduct a hypothesis test later to see if that is true for a given significance level. Additionally, we observed an increaing trend of mean tooth growth with a higher dose used. We can further conduct another t-test to validate this trend.
+```{r ref.label="summary", echo=FALSE,message = FALSE,fig.width=7, fig.height=3.75}
+
+```
+  
+It is worthwhile to note that the data is not normally distributed, however, we know that by using CLT we cna construct a distribution that approximately normal. This is critical for our downstreaming analytics.
+
+## What is the 95% T confidence interval for the mean tooth growth in this dataset?
+```{r}
+obs <- length(dat$len)
+conf_95 <- mean(dat$len) + c(-1,1) * qt(0.95,obs-1) * sd(dat$len)/sqrt(obs)
+```
+For 95% confidence interval we can just use qt() function to obtain the quantile which can then be multiplied by estimated standard error to find the interval we need. The result is `r conf_95[1]` to `r conf_95[2]` as calculated using R command above.
+
+## Does the mean tooth growth change for different supp?
+H<sub>0</sub>: Difference in mean tooth growth is equal to 0 for different supp at a significance level of 0.05  
+H<sub>a</sub>: Difference in mean tooth growth is not equal to 0 for different supp at a significance level of 0.05
+```{r}
+t.test(len~supp,data=dat)
+```
+We can see that the p-value = 0.06063 > 0.05 which means the at a significance level of 0.05, we faile to reject the null hypothesis, i.e. we could say that the difference in mean tooth growth is equal to 0 for different supp at a significance level of 0.05.
+
+## Does the increase of dose lead to increase of mean tooth growth?
+```{r}
+t.test(dat$len[dat$dose == 0.5],dat$len[dat$dose == 1.0],data = dat)
+t.test(dat$len[dat$dose == 1],dat$len[dat$dose == 2],data = dat)
+```
+For both t-test, the p-values are extremely small, which means we have strong evidence to show that the mean tooth growth will increase for higher dose used.
+
+## Appendix
+Here are the codes for plotting
+```{r summary, echo=TRUE,message = FALSE,eval = FALSE}
+library(datasets)
+library(ggplot2)
+dat<-ToothGrowth
+str(dat)
+dat <- dat[complete.cases(dat),]
+
+ggplot(data = dat, aes(x = supp,y = len))+
+  stat_summary(fun.y = "mean",geom = "bar",na.rm = T)+
+  labs(title = "Mean tooth Growth vs supp")
+
+ggplot(data=dat,aes(x=len))+
+  geom_histogram(aes(y =..density..),binwidth = 2.5,col = "black",fill = "red")+
+  stat_function(fun = dnorm,args = list(mean = mean(dat$len),sd = sd(dat$len))) +
+  labs(title = "Tooth Growth Distribution")
+
+ggplot(data = dat, aes(x = dose,y = len))+
+  stat_summary(fun.y = "mean",geom = "bar",na.rm = T)+
+  labs(title = "Mean tooth Growth vs dose")
+
+```

@@ -1,0 +1,80 @@
+---
+title: "Project Part A"
+output:
+  pdf_document: default
+  html_document: default
+---
+# Part I: Simulation Exercise Instructions
+## Overview
+This study aims to investigate the exponential distribution in R and compare it with the Central Limit Theorem. 
+
+## Simulation
+Firstly, we would like to see the exponential distribution for 1000 samples which can be simulated using rexp() function. Then, we simulate the average of 1000 means of exponential distribution for 40 samples. For consistency, we set the rate parameter as 0.2 for all simulations. The R code is provided as below:  
+```{r Simulation}
+library(ggplot2)
+library(gridExtra)
+set.seed(322)
+rate <- 0.2
+dexp <- data.frame(rexp(1000,rate))
+
+clt = NULL
+for (i in 1 : 1000) clt = c(clt, mean(rexp(40,rate)))
+dclt <- data.frame(clt)
+```
+
+## Sample Mean versus Theoretical Mean
+Here we draw the histogram of the Average of 1000 means of exponential distribution with 40 samples and rate of 0.2. Meanwhile, we label the sample mean as red vertical line and theoratical mean as blue line.  
+```{r ref.label = "MeanComparison", echo = FALSE,message=FALSE,fig.width=6, fig.height=3.75}
+
+```
+  
+Now, we can see that the two means are `r mean(dexp[,1])` and `r 1/rate` respectively. Based on central limit theorem, mean of averages of the simulations should be close to the mean of the simulation as long as the number of simulations is large enough. Here, we do observe that the theoratical mean and sample mean are very close which supports the CLT.
+
+## Sample Variance versus Theoretical Variance
+Here we draw the same histogram and label the sample variance as red vertical line and theoratical variance as blue line.  
+```{r ref.label= "VarComparison", echo=FALSE,message=FALSE,fig.width=6, fig.height=3.75}
+
+```
+  
+Now, we can see that the two variances are `r var(dclt[,1])` and `r (1/rate)^2/40` respectively. Based on central limit theorem, variance of averages of the simulations should be close to the variance of the simulation divided by the number of samples of the simulation as long as the number of simulations is large enough. Here, we do observe that the theoratical variance and sample variance are very close which supports the CLT.
+
+## Distribution
+Here let us plot the histogram of two simulations:
+  
+```{r ref.label= "CLT", echo=FALSE,message=FALSE,fig.width=6, fig.height=3.75}
+```
+  
+The black curve is normal distribution curve for given mean and standard deviation of each simulation. For the histogram in the right panel, we can see the distribution is roughly normally distributed.
+
+## Appendix
+```{r MeanComparison, echo = TRUE,message=FALSE,eval=FALSE}
+ggplot(data = dclt, aes(x = dclt))+
+  geom_histogram(aes(y = ..density..), binwidth = 0.2, col = "black",fill = "red")+
+  geom_vline(aes(xintercept = mean(dclt[,1]),color = "Sample_mean"),show.legend = T)+
+  geom_vline(aes(xintercept = 1/rate,color = "Theo_mean"),show.legend = T)+ 
+  labs(title = "Average of 1000 means of exponential distribution with 40 samples") 
+```
+
+```{r VarComparison, echo=TRUE,message=FALSE,eval = FALSE}
+ggplot(data = dclt, aes(x = dclt)) + 
+  geom_histogram(aes(y = ..density..), binwidth = 0.2, col = "black",fill = "red")+
+  geom_vline(aes(xintercept = var(dclt[,1]),color = "Sample_var"),show.legend = T)+
+  geom_vline(aes(xintercept = (1/rate)^2/40,color = "Theo_var"),show.legend = T) + 
+  labs(title = "Average of 1000 means of exponential distribution with 40 samples") 
+```
+
+```{r CLT, echo=TRUE,message=FALSE,eval = FALSE}
+p1 <- ggplot(data = dexp, aes(x = dexp)) + 
+  geom_histogram(aes(y = ..density..),binwidth = 2,col="black",fill = "blue")+
+  stat_function(fun = dnorm,
+                ,args = list(mean = mean(dexp[,1]), sd = sd(dexp[,1])),color = "black",size = 1) + 
+  labs(title = "Exponential distribution")
+
+p2 <- ggplot(data = dclt, aes(x = dclt)) + 
+  geom_histogram(aes(y = ..density..), binwidth = 0.2, col = "black",fill = "red")+
+  stat_function(fun = dnorm,
+                ,args = list(mean = mean(dclt[,1]), sd = sd(dclt[,1])),color = "black",size = 1) + 
+  labs(title = "Average of means of exponential distribution")
+
+grid.arrange(p1,p2,ncol = 2)
+```
